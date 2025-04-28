@@ -514,7 +514,6 @@ def interactive_dashboard():
                 sns.heatmap(correlation, annot=True, cmap='coolwarm', center=0)
                 plt.title("Correlation Heatmap")
                 st.pyplot(fig)
-                
                 # Create scatter plot
                 fig, ax = plt.subplots(figsize=(10, 6))
                 sns.scatterplot(data=df, x=factors[0], y=factors[1])
