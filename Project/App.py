@@ -8,11 +8,219 @@ import pickle
 from io import BytesIO
 import base64
 import time
+from fpdf import FPDF
+from datetime import datetime
+import os
 
 # Load model
 model = pickle.load(open("model.pkl", "rb"))
 
+def save_prediction_data(input_data, prediction_score, category, factors):
+    """Save prediction data to Excel file"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Create prediction data dictionary
+    prediction_data = {
+        'Timestamp': timestamp,
+        'Gender': 'Male' if input_data[0][0] == 1 else 'Female',
+        'Age': int(input_data[0][1]),
+        'Academic_Pressure': int(input_data[0][2]),
+        'CGPA': float(input_data[0][3]),
+        'Study_Satisfaction': int(input_data[0][4]),
+        'Sleep_Duration': ['Less than 5 hours', '5-6 hours', '7-8 hours', 'More than 8 hours'][int(input_data[0][5])],
+        'Dietary_Habits': ['Healthy', 'Moderate', 'Unhealthy'][int(input_data[0][6])],
+        'Suicidal_Thoughts': 'Yes' if input_data[0][7] == 1 else 'No',
+        'Study_Hours': int(input_data[0][8]),
+        'Financial_Stress': int(input_data[0][9]),
+        'Family_History': 'Yes' if input_data[0][10] == 1 else 'No',
+        'Prediction_Score': prediction_score,
+        'Risk_Category': category,
+        'Top_Factors': str(factors[:3])  # Save top 3 factors
+    }
+    
+    # Convert to DataFrame
+    df = pd.DataFrame([prediction_data])
+    
+    # Save to Excel file
+    file_path = 'prediction_history.xlsx'
+    if os.path.exists(file_path):
+        try:
+            # Read existing Excel file
+            existing_df = pd.read_excel(file_path, sheet_name='Predictions')
+            # Concatenate with new data
+            updated_df = pd.concat([existing_df, df], ignore_index=True)
+            # Save back to Excel
+            updated_df.to_excel(file_path, sheet_name='Predictions', index=False)
+        except Exception as e:
+            # If there's any error reading the file, create a new one
+            df.to_excel(file_path, sheet_name='Predictions', index=False)
+    else:
+        # If file doesn't exist, create new file
+        df.to_excel(file_path, sheet_name='Predictions', index=False)
 
+def save_feedback_data(rating, suggestions):
+    """Save feedback data to Excel file"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Create feedback data dictionary
+    feedback_data = {
+        'Timestamp': timestamp,
+        'Rating': rating,
+        'Suggestions': suggestions
+    }
+    
+    # Convert to DataFrame
+    df = pd.DataFrame([feedback_data])
+    
+    # Save to Excel file
+    file_path = 'feedback_history.xlsx'
+    if os.path.exists(file_path):
+        try:
+            # Read existing Excel file
+            existing_df = pd.read_excel(file_path, sheet_name='Feedback')
+            # Concatenate with new data
+            updated_df = pd.concat([existing_df, df], ignore_index=True)
+            # Save back to Excel
+            updated_df.to_excel(file_path, sheet_name='Feedback', index=False)
+        except Exception as e:
+            # If there's any error reading the file, create a new one
+            df.to_excel(file_path, sheet_name='Feedback', index=False)
+    else:
+        # If file doesn't exist, create new file
+        df.to_excel(file_path, sheet_name='Feedback', index=False)
+
+def create_mood_tracking_worksheet():
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Mood Tracking Worksheet", ln=True, align="C")
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(10)
+    
+    # Add table headers
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(30, 10, "Date", 1)
+    pdf.cell(30, 10, "Mood (1-5)", 1)
+    pdf.cell(30, 10, "Sleep Hours", 1)
+    pdf.cell(30, 10, "Stress Level", 1)
+    pdf.cell(30, 10, "Notes", 1)
+    pdf.ln()
+    
+    # Add empty rows for tracking
+    pdf.set_font("Arial", "", 10)
+    for _ in range(7):
+        pdf.cell(30, 10, "", 1)
+        pdf.cell(30, 10, "", 1)
+        pdf.cell(30, 10, "", 1)
+        pdf.cell(30, 10, "", 1)
+        pdf.cell(30, 10, "", 1)
+        pdf.ln()
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Mood Scale:", ln=True)
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 10, "1 - Very Unhappy, 2 - Unhappy, 3 - Neutral, 4 - Happy, 5 - Very Happy", ln=True)
+    
+    return bytes(pdf.output(dest="S"))
+
+def create_anxiety_management_worksheet():
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Anxiety Management Worksheet", ln=True, align="C")
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(10)
+    
+    # Anxiety Triggers Section
+    pdf.cell(0, 10, "1. Identify Your Anxiety Triggers", ln=True)
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 10, "Common Triggers:", ln=True)
+    pdf.set_font("Arial", "", 10)
+    triggers = [
+        "Academic pressure",
+        "Social situations",
+        "Financial concerns",
+        "Family issues",
+        "Health concerns",
+        "Other:"
+    ]
+    for trigger in triggers:
+        pdf.cell(0, 10, f"[ ] {trigger}", ln=True)
+    
+    # Coping Strategies Section
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "2. Coping Strategies", ln=True)
+    pdf.set_font("Arial", "", 10)
+    strategies = [
+        "Deep breathing exercises",
+        "Meditation",
+        "Physical exercise",
+        "Talking to someone",
+        "Writing in a journal",
+        "Taking a break",
+        "Other:"
+    ]
+    for strategy in strategies:
+        pdf.cell(0, 10, f"[ ] {strategy}", ln=True)
+    
+    return bytes(pdf.output(dest="S"))
+
+def create_self_care_guide():
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Self-Care Guide", ln=True, align="C")
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(10)
+    
+    # Daily Wellness Practices
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "1. Daily Wellness Practices", ln=True)
+    pdf.set_font("Arial", "", 10)
+    practices = [
+        "- Get 7-8 hours of sleep",
+        "- Eat balanced meals",
+        "- Stay hydrated",
+        "- Exercise regularly",
+        "- Take breaks when needed"
+    ]
+    for practice in practices:
+        pdf.cell(0, 10, practice, ln=True)
+    
+    # Mindfulness Exercises
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "2. Mindfulness Exercises", ln=True)
+    pdf.set_font("Arial", "", 10)
+    exercises = [
+        "- 5-minute breathing meditation",
+        "- Body scan relaxation",
+        "- Mindful walking",
+        "- Gratitude journaling",
+        "- Progressive muscle relaxation"
+    ]
+    for exercise in exercises:
+        pdf.cell(0, 10, exercise, ln=True)
+    
+    # Healthy Lifestyle Tips
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "3. Healthy Lifestyle Tips", ln=True)
+    pdf.set_font("Arial", "", 10)
+    tips = [
+        "- Maintain a regular sleep schedule",
+        "- Practice time management",
+        "- Set boundaries",
+        "- Stay connected with others",
+        "- Seek help when needed"
+    ]
+    for tip in tips:
+        pdf.cell(0, 10, tip, ln=True)
+    
+    return bytes(pdf.output(dest="S"))
 
 # Function to generate downloadable report
 def generate_report(prediction_data, visuals_html, suggestions):
@@ -113,6 +321,13 @@ def predict():
             max_display=5, show=False)
         st.pyplot(fig)
 
+        # Save prediction data
+        save_prediction_data(input_data, prob, category, [f"{col}: {shap_values[0][i]:.2f}" for i, col in enumerate([
+            'Gender', 'Age', 'Academic_Pressure', 'CGPA', 'Study_Satisfaction',
+            'Sleep_Duration', 'Dietary_Habits', 'Ever_had_suicidal_thoughts',
+            'Study_Hours', 'Financial_Stress', 'Family_History_of_Mental_Illness'
+        ])])
+
         # Suggestions
         st.subheader("💡 Personalized Suggestions")
         suggestions = []
@@ -145,7 +360,7 @@ def predict():
         if suicidal_thoughts_num == 0 and sleep_duration_num < 2:
             suggestions.append("🧠 While you don't experience suicidal thoughts, your sleep patterns suggest a need for attention. Improving your sleep might enhance your overall mental wellbeing.")
         if study_satisfaction > 4:
-            suggestions.append("🌟 You're likely on the right track! Keep maintaining a balanced approach to your studies and ensure you’re also taking care of your mental health.")
+            suggestions.append("🌟 You're likely on the right track! Keep maintaining a balanced approach to your studies and ensure you're also taking care of your mental health.")
         if dietary_habits == "Moderate" and sleep_duration_num == 1:
             suggestions.append("🍽️ Your diet and sleep habits could be better. Aim for more balanced meals and aim to improve your sleep duration for better overall health.")
         if study_hours == 0:
@@ -159,7 +374,7 @@ def predict():
         if suicidal_thoughts_num == 0 and study_satisfaction > 3:
             suggestions.append("🌈 You're managing well. Keep maintaining a healthy work-life balance and stay connected with supportive people.")
         if financial_stress == 1:
-            suggestions.append("💸 Financial stress is low, but it’s still important to stay mindful of budgeting. Consider keeping track of your expenses to ensure long-term stability.")
+            suggestions.append("💸 Financial stress is low, but it's still important to stay mindful of budgeting. Consider keeping track of your expenses to ensure long-term stability.")
         if family_history_num == 0:
             suggestions.append("👍 Having no family history of mental illness is a positive sign. Continue focusing on your mental health through self-care and professional check-ins.")
         if study_hours == 12:
@@ -218,7 +433,6 @@ def predict():
         st.divider()
         st.markdown("<h3 style='text-align: center; color: #4CAF50;'>💚 Thank you for using the Depression Risk Prediction App. We hope this tool helps you take a step towards better mental well-being. Remember, seeking support is always a sign of strength. 💪</h3>", unsafe_allow_html=True)
 
-
 def feedback_form():
     st.title("📝 We'd Love Your Feedback!")
     
@@ -232,21 +446,301 @@ def feedback_form():
     submit_button = st.button("Submit Feedback")
     
     if submit_button:
-        st.success("Thank you for your feedback!")
+        # Save feedback data
+        save_feedback_data(rating, suggestions)
         
-        # Optionally save or process the feedback
-        # You can save the feedback to a file or a database
-        feedback_data = {
-            "rating": rating,
-            "suggestions": suggestions
-        }
-        # For now, you can print the feedback (or save it as needed)
-        print(feedback_data)
+        st.success("Thank you for your feedback!")
         
         # Thank you message
         st.write(f"Your rating: {rating}")
         st.write(f"Your suggestions: {suggestions if suggestions else 'No suggestions provided.'}")
 
+def interactive_dashboard():
+    st.title("📊 Interactive Analytics Dashboard")
+    
+    # Load the dataset for analysis
+    try:
+        df = pd.read_csv("student_depression_dataset.csv")
+        
+        # Get actual column names from the dataset
+        numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+        
+        if not numeric_columns:
+            st.error("No numeric columns found in the dataset. Please check the dataset structure.")
+            return
+            
+        # Create tabs for different visualizations
+        tab1, tab2, tab3 = st.tabs(["📈 Risk Factor Trends", "🔄 Correlation Analysis", "📊 Population Comparison"])
+        
+        with tab1:
+            st.subheader("Risk Factor Distribution")
+            
+            # Select factor to analyze
+            factor = st.selectbox(
+                "Select Factor to Analyze",
+                numeric_columns
+            )
+            
+            # Create distribution plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.histplot(data=df, x=factor, bins=20, kde=True)
+            plt.title(f"Distribution of {factor}")
+            st.pyplot(fig)
+            
+            # Show statistics
+            st.write("### Statistics")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Mean", f"{df[factor].mean():.2f}")
+            with col2:
+                st.metric("Median", f"{df[factor].median():.2f}")
+            with col3:
+                st.metric("Standard Deviation", f"{df[factor].std():.2f}")
+        
+        with tab2:
+            st.subheader("Correlation Analysis")
+            
+            # Select factors for correlation
+            factors = st.multiselect(
+                "Select Factors to Compare",
+                numeric_columns,
+                default=numeric_columns[:2] if len(numeric_columns) >= 2 else numeric_columns
+            )
+            
+            if len(factors) >= 2:
+                # Create correlation heatmap
+                correlation = df[factors].corr()
+                fig, ax = plt.subplots(figsize=(10, 8))
+                sns.heatmap(correlation, annot=True, cmap='coolwarm', center=0)
+                plt.title("Correlation Heatmap")
+                st.pyplot(fig)
+                
+                # Create scatter plot
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.scatterplot(data=df, x=factors[0], y=factors[1])
+                plt.title(f"{factors[0]} vs {factors[1]}")
+                st.pyplot(fig)
+        
+        with tab3:
+            st.subheader("Population Comparison")
+            
+            # Select metric for comparison
+            metric = st.selectbox(
+                "Select Metric",
+                numeric_columns
+            )
+            
+            # Create box plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.boxplot(data=df, y=metric)
+            plt.title(f"Population Distribution of {metric}")
+            st.pyplot(fig)
+            
+            # Show percentile information
+            st.write("### Percentile Information")
+            percentiles = [25, 50, 75, 90]
+            values = [df[metric].quantile(p/100) for p in percentiles]
+            
+            for p, v in zip(percentiles, values):
+                st.write(f"{p}th Percentile: {v:.2f}")
+    
+    except FileNotFoundError:
+        st.error("Dataset file 'student_depression_dataset.csv' not found. Please ensure the file is in the correct location.")
+    except Exception as e:
+        st.error("An error occurred while loading or processing the dataset.")
+        st.write("Error details:", str(e))
+        st.write("Please check if the dataset is properly formatted and contains numeric columns.")
+
+def resource_center():
+    st.title("📚 Mental Health Resource Center")
+    
+    # Create tabs for different resource categories
+    tab1, tab2, tab3 = st.tabs(["📖 Educational Content", "🆘 Professional Help", "📥 Downloadable Resources"])
+    
+    with tab1:
+        st.header("Educational Content")
+        
+        # Understanding Depression
+        with st.expander("Understanding Depression", expanded=True):
+            st.markdown("""
+            ### What is Depression?
+            Depression is a common and serious medical illness that negatively affects how you feel, the way you think and how you act. 
+            It can lead to a variety of emotional and physical problems and can decrease your ability to function at work and at home.
+            
+            #### Common Symptoms:
+            - Persistent sad, anxious, or "empty" mood
+            - Feelings of hopelessness or pessimism
+            - Irritability
+            - Feelings of guilt, worthlessness, or helplessness
+            - Loss of interest or pleasure in hobbies and activities
+            - Decreased energy or fatigue
+            - Moving or talking more slowly
+            - Difficulty sleeping, early-morning awakening, or oversleeping
+            """)
+        
+        # Coping Strategies
+        with st.expander("Coping Strategies", expanded=True):
+            st.markdown("""
+            ### Effective Coping Strategies
+            
+            #### 1. Lifestyle Changes
+            - Maintain a regular sleep schedule
+            - Exercise regularly
+            - Eat a balanced diet
+            - Practice mindfulness or meditation
+            
+            #### 2. Social Support
+            - Stay connected with friends and family
+            - Join support groups
+            - Seek professional help when needed
+            
+            #### 3. Academic Balance
+            - Set realistic goals
+            - Break tasks into smaller steps
+            - Take regular breaks
+            - Practice time management
+            """)
+        
+        # Stress Management
+        with st.expander("Stress Management", expanded=True):
+            st.markdown("""
+            ### Managing Academic Stress
+            
+            #### 1. Time Management
+            - Create a study schedule
+            - Set priorities
+            - Avoid procrastination
+            
+            #### 2. Study Techniques
+            - Use active learning methods
+            - Take regular breaks
+            - Create a conducive study environment
+            
+            #### 3. Self-Care
+            - Practice relaxation techniques
+            - Maintain work-life balance
+            - Get adequate sleep
+            """)
+    
+    with tab2:
+        st.header("Professional Help Resources")
+        
+        # Emergency Contacts
+        st.subheader("🚨 Emergency Contacts")
+        st.markdown("""
+        ### Immediate Help (24/7)
+        - **National Suicide Prevention Lifeline**: 988
+        - **Crisis Text Line**: Text HOME to 741741
+        - **Emergency Services**: 911
+        
+        ### Mental Health Helplines
+        - **SAMHSA's National Helpline**: 1-800-662-4357
+        - **National Alliance on Mental Illness (NAMI)**: 1-800-950-6264
+        """)
+        
+        # Professional Resources
+        st.subheader("👨‍⚕️ Professional Resources")
+        st.markdown("""
+        ### Finding Professional Help
+        1. **University Counseling Services**
+           - Contact your university's counseling center
+           - Many offer free or low-cost services
+        
+        2. **Online Therapy Platforms**
+           - BetterHelp
+           - Talkspace
+           - 7 Cups
+        
+        3. **Local Mental Health Clinics**
+           - Search for certified mental health professionals in your area
+           - Check with your insurance provider for covered services
+        """)
+        
+        # Support Groups
+        st.subheader("👥 Support Groups")
+        st.markdown("""
+        ### Available Support Groups
+        1. **NAMI Support Groups**
+           - Free support groups for individuals and families
+           - Available both online and in-person
+        
+        2. **Depression and Bipolar Support Alliance (DBSA)**
+           - Peer-led support groups
+           - Online and in-person meetings available
+        
+        3. **University Support Groups**
+           - Check with your university's counseling center
+           - Often free for students
+        """)
+    
+    with tab3:
+        st.header("Downloadable Resources")
+        
+        # Create columns for different resource types
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📝 Worksheets")
+            st.markdown("""
+            ### Self-Help Worksheets
+            1. **Mood Tracking Worksheet**
+               - Track daily moods and triggers
+               - Identify patterns and coping strategies
+            
+            2. **Anxiety Management Worksheet**
+               - Identify anxiety triggers
+               - Practice coping techniques
+            
+            3. **Goal Setting Worksheet**
+               - Set realistic academic goals
+               - Create action plans
+            """)
+            
+            # Add download buttons for worksheets with actual PDF content
+            mood_tracking_pdf = create_mood_tracking_worksheet()
+            st.download_button(
+                label="📥 Download Mood Tracking Worksheet",
+                data=mood_tracking_pdf,
+                file_name="mood_tracking_worksheet.pdf",
+                mime="application/pdf"
+            )
+            
+            anxiety_worksheet_pdf = create_anxiety_management_worksheet()
+            st.download_button(
+                label="📥 Download Anxiety Management Worksheet",
+                data=anxiety_worksheet_pdf,
+                file_name="anxiety_management_worksheet.pdf",
+                mime="application/pdf"
+            )
+        
+        with col2:
+            st.subheader("📚 Guides")
+            st.markdown("""
+            ### Educational Guides
+            1. **Understanding Depression Guide**
+               - Symptoms and causes
+               - Treatment options
+               - Self-help strategies
+            
+            2. **Academic Stress Management Guide**
+               - Time management tips
+               - Study techniques
+               - Balance strategies
+            
+            3. **Self-Care Guide**
+               - Daily wellness practices
+               - Mindfulness exercises
+               - Healthy lifestyle tips
+            """)
+            
+            # Add download button for self-care guide with actual PDF content
+            self_care_pdf = create_self_care_guide()
+            st.download_button(
+                label="📥 Download Self-Care Guide",
+                data=self_care_pdf,
+                file_name="self_care_guide.pdf",
+                mime="application/pdf"
+            )
 
 # Main App
 def main():
@@ -254,7 +748,7 @@ def main():
     st.sidebar.title("🧠 Depression Risk App")
     st.sidebar.image("c:\\Users\\pavan\\OneDrive\\Documents\\Project\\Project\\Img1.jpg", caption="Mental Health Awareness", use_container_width=True)
 
-    app_mode = st.sidebar.radio("Navigation", ["🏠 Home", "ℹ️ About", "🔮 Prediction","📋 Feedback"])
+    app_mode = st.sidebar.radio("Navigation", ["🏠 Home", "ℹ️ About", "🔮 Prediction", "📊 Analytics", "📚 Resources", "📋 Feedback"])
     if app_mode == "🏠 Home":
         st.markdown(
         "<h1 style='text-align: center;'>💡Welcome to the Depression Risk Prediction App</h1>",
@@ -268,7 +762,7 @@ def main():
 
 # Right column for the text
         with col1:
-            st.write("💬Turning silence into strength—where healing begins and hope thrives. Let’s create spaces free from depression, where every mind can breathe, grow, and shine.🌱✨")
+            st.write("💬Turning silence into strength—where healing begins and hope thrives. Let's create spaces free from depression, where every mind can breathe, grow, and shine.🌱✨")
             st.markdown("### Features:")
             st.write("1. **Accurate Depression Risk Prediction**:  Predict the risk of depression based on various factors such as academic pressure, sleep patterns, and mental health history.")
             st.write("2. **Personalized Recommendations**:  Get tailored suggestions to improve mental health based on individual risk factors.")
@@ -279,6 +773,12 @@ def main():
 
     elif app_mode == "🔮 Prediction":
         predict()
+    
+    elif app_mode == "📊 Analytics":
+        interactive_dashboard()
+    
+    elif app_mode == "📚 Resources":
+        resource_center()
     
     elif app_mode == "📋 Feedback":
         feedback_form()
